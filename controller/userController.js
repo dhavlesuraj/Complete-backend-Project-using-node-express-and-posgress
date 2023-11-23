@@ -85,4 +85,29 @@ export const createUser = async (req, res) => {
   }
 };
 
+export const userLogin = async (req, res) => {
+  const { email, password } = req.body;
+  if ((email && password) == "") {
+    return res.json({ status: "failed", message: "All fields are required" });
+  }
+  const user = await prisma.users.findUnique({
+    where: { email: email },
+  });
+  if (!user) {
+    return res.json({
+      status: "failed",
+      message: "please try to login with correct credential",
+    });
+  }
+  const passwordMatch = await bcrypt.compare(password, user.password);
+  if (!passwordMatch) {
+    return res.json({
+      status: "failed",
+      message: "please try to login with correct credential",
+    });
+  }
+  return res.send("user Login Successfully");
+  console.log(email);
+};
+
 
