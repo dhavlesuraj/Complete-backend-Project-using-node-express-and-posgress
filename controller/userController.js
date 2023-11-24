@@ -1,9 +1,10 @@
 import prisma from "../DB/db.config.js";
-import getTimeStamp from "../middleware/timeStamp.js";
+import getTimeStamp from "../utils/timeStamp.js";
 import bcrypt from "bcrypt";
+import Jwt from "jsonwebtoken";
+import config from "../utils/config.js";
 
-
-//* create user 
+//* create user
 export const createUser = async (req, res) => {
   try {
     const {
@@ -28,23 +29,22 @@ export const createUser = async (req, res) => {
         date_of_birth,
       ].some((field) => field?.trim() === "")
     ) {
-      return res.send("all fields are required");
+      return res.json({ status: "failed", message: "all fields are required" });
     }
-    //let regex =new Rejex("^[a-z0-9]+@[a-z]+\.[a-z]{2,3}$");
     const regexEmail = /^[a-zA-Z]+[0-9]+@[a-zA-Z]+\.[a-zA-Z]{2,3}$/;
-    
+
     if (!email.match(regexEmail)) {
-            return res.json({
-              status: 400,
-              message: "Please Enter valid Email",
-            });
+      return res.json({
+        status: 400,
+        message: "Please Enter valid Email",
+      });
     }
     const regexMob = /^[6789]\d{9}$/;
-    if(!mobile_no.match(regexMob)){
-        return res.json({
-          status: 400,
-          message: "Please Enter valid mobile Number",
-        });
+    if (!mobile_no.match(regexMob)) {
+      return res.json({
+        status: 400,
+        message: "Please Enter valid mobile Number",
+      });
     }
     const ageAsInteger = parseInt(age);
     if (!isNaN(ageAsInteger) && ageAsInteger <= 0) {
@@ -79,12 +79,13 @@ export const createUser = async (req, res) => {
         created_at: getTimeStamp(new Date()),
       },
     });
-    res.send("success");
+    res.json({ status: "success", message: "user create successfully" });
   } catch (error) {
     console.log(error);
   }
 };
 
+//* user login
 export const userLogin = async (req, res) => {
   const { email, password } = req.body;
   if ((email && password) == "") {
@@ -106,8 +107,40 @@ export const userLogin = async (req, res) => {
       message: "please try to login with correct credential",
     });
   }
-  return res.send("user Login Successfully");
-  console.log(email);
+  const payload = {
+    user: {
+      id: user.user_id,
+    },
+  };
+  const token = Jwt.sign(payload, config.secretKey);
+  res.json({token});
+  //return res.json({status:200,message:"user Login Successfully"});
 };
 
+//* get data on authored user
+export const getAuthUserDetails = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await prisma.users.findFirst({
+      where: {
+        user_id: userId,
+      },
+      select: {
+        user_id: true,
+        first_name: true,
+        last_name: true,
+        email: true,
+        password: false,
+        mobile_no: true,
+        gender: true,
+        age: true,
+        date_of_birth: true,
+        created_at: true,
+      },
+    });
 
+    return res.send(user);
+  } catch (error) {
+    console.log(error);
+  }
+};
