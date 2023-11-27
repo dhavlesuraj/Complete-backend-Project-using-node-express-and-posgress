@@ -112,10 +112,12 @@ export const userLogin = async (req, res) => {
       id: user.user_id,
     },
   };
-  const token = Jwt.sign(payload, config.secretKey);
-  res.json({token});
+
+  const token = Jwt.sign(payload, config.secretKey, { expiresIn: "10m" });
+  res.json({ token });
   //return res.json({status:200,message:"user Login Successfully"});
 };
+
 
 //* get data on authored user
 export const getAuthUserDetails = async (req, res) => {
@@ -140,6 +142,43 @@ export const getAuthUserDetails = async (req, res) => {
     });
 
     return res.send(user);
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const updatePassword =async (req,res) => {
+  try {
+    const userId = req.user.id;
+    const newPassword=req.body.password;
+    if (newPassword != ""){
+      const user = await prisma.users.findFirst({
+        where: {
+          user_id: userId,
+        },
+      });
+      const passwordMatch = await bcrypt.compare( newPassword,user.password);
+      if(!passwordMatch){
+        const salt = await bcrypt.genSalt(10);
+        const securePassword = await bcrypt.hash(newPassword, salt);  
+        await prisma.users.update({
+          where: {
+            user_id: userId,
+          },
+          data: {
+            password: securePassword,
+          },
+        });
+        res.json({
+          status: "success",
+          message: "user password updated successfully",
+        });
+      }else{
+      res.json({status:"failed", message: "Enter unique password"});
+      }
+    }else{
+    res.json({ status: "failed", message: "Enter password" });
+    }
   } catch (error) {
     console.log(error);
   }
