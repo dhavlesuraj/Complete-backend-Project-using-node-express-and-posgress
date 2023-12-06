@@ -150,17 +150,17 @@ export const getAuthUserDetails = async (req, res) => {
 export const updatePassword =async (req,res) => {
   try {
     const userId = req.user.id;
-    const newPassword=req.body.password;
-    if (newPassword != ""){
+    const {password}=req.body;
+    if (password != ""){
       const user = await prisma.users.findFirst({
         where: {
           user_id: userId,
         },
       });
-      const passwordMatch = await bcrypt.compare( newPassword,user.password);
+      const passwordMatch = await bcrypt.compare( password,user.password);
       if(!passwordMatch){
         const salt = await bcrypt.genSalt(10);
-        const securePassword = await bcrypt.hash(newPassword, salt);  
+        const securePassword = await bcrypt.hash(password, salt);  
         await prisma.users.update({
           where: {
             user_id: userId,
@@ -183,3 +183,28 @@ export const updatePassword =async (req,res) => {
     console.log(error);
   }
 };
+
+export const updateUserDetails=async(req,res)=>{
+const userId = req.user.id;
+const {first_name,last_name,email,mobile_no,gender,age,date_of_birth}=req.body;
+if(first_name =='' || last_name =='' || email=='' || mobile_no=='' || gender==''|| age=='' || date_of_birth==''){
+  res.json({status:"failed",message:"Enter updated fields"});
+}else{
+  await prisma.users.update({
+    where: {
+      user_id: userId,
+    },
+    data: {
+      first_name,
+      last_name,
+      email,
+      mobile_no,
+      gender,
+      age,
+      date_of_birth: new Date(date_of_birth)
+    },
+  });
+  res.json({satus:"success",message:"user details updated successfully"});
+}
+}
+ 

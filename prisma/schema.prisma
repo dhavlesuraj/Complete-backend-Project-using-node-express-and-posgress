@@ -20,5 +20,16 @@ model users{
   gender String
   age String
   date_of_birth DateTime  
-  created_at DateTime 
+  created_at DateTime
+  user_image user_image[] 
 } 
+
+model user_image{
+  img_id Int @id @default(autoincrement())
+   users users@relation(fields: [user_id],references: [user_id], onDelete: Cascade)
+   user_id Int @unique
+   image String
+   created_at DateTime
+}
+
+
