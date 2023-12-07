@@ -1,14 +1,18 @@
 import prisma from "../DB/db.config.js";
 import getTimeStamp from "../utils/timeStamp.js";
-import fs from "fs";
+import fs from "fs"
+
+
+
 
 export const uploadImage = async (req, res) => {
   const userId = req.user.id;
+  const file = req.files.file;
+  const base64Data=file.data.toString("base64");
+  console.log(base64Data);
+  
   try {
-    if (req.file) {
-      const path = req.file.path;
-      //console.log(path);
-
+    if (req.files.file) {
       const user = await prisma.user_image.findUnique({
         where: {
           user_id: userId,
@@ -20,25 +24,23 @@ export const uploadImage = async (req, res) => {
             user_id: userId,
           },
           data: {
-            image: path,
+            image: base64Data,
           },
         });
         return res.json({
-          message: "image updated successfully",
-          filename: req.file.filename,
+          message: "image updated successfully"
         }); 
       } else {
         
         await prisma.user_image.create({
           data: {
             user_id: userId,
-            image: path,
+            image: base64Data,
             created_at: getTimeStamp(new Date()),
           },
         });
         return res.json({
-          message: "File uploaded successfully",
-          filename: req.file.filename,
+          message: "File uploaded successfully"
         });
       }
     } else {
