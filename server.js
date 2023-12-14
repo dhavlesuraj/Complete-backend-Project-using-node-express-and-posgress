@@ -9,7 +9,7 @@ app.get("/",(req,res)=>{
     return res.send("Hi Everyone");
 });
 
-app.use(fileUpload());
+app.use(fileUpload());    //it is use to upload file or images in database
 app.use(express.json());
 
 app.listen(PORT,()=>console.log(`server is running on Port ${PORT}`))

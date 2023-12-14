@@ -2,7 +2,61 @@ import prisma from "../DB/db.config.js";
 import getTimeStamp from "../utils/timeStamp.js";
 import bcrypt from "bcrypt";
 import Jwt from "jsonwebtoken";
-import config from "../utils/config.js";
+import "dotenv/config";
+import nodemailer from "nodemailer";
+import fs from "fs";
+
+const secretKey = process.env.secretKey;
+const sendMessageOnMail = async (name, email) => {
+  try {
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      host: "smtp.gmail.com",
+      requireTLS: true,
+      auth: {
+        // TODO: replace `user` and `pass` values from <https://forwardemail.net>
+        // user: "surajdhavle1106@gmail.com",
+        // pass: "tjyl vztp oqql kqtp ",
+        user: process.env.emailId,
+        pass: process.env.password,
+      },
+    });
+
+    const info = await transporter.sendMail({
+      from: "surajdhavle1106@gmail.com", // sender address
+      to: email, // list of receivers
+      subject: `Hello${name}`, // Subject line
+      text: "Hello world?", // plain text body
+      //html: "<b>Hello world?</b>", // html body
+      html: `<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>User Login</title>
+</head>
+
+<body style="display: flex; align-items: center;justify-content: center;">
+  <div>
+    <div class="mainDiv" style="margin-top: 80px;border-radius: 10px;height: 70vh;width: 40vh;border: 10px solid black;">
+      <div style="display: flex; align-items: center;justify-content: center;margin-top: 70px;">
+        <h3>Congratulations ${name}! 🎉</h3>
+      </div>
+      <div style="display: flex; align-items: center;justify-content: center">
+        <img style="height: 150px;width: 200px;"
+        src="https://cdn.pixabay.com/photo/2019/04/24/11/27/flowers-4151900_1280.jpg">
+      </div>
+    </div>
+  </div>
+</body>
+</html>`,
+    });
+    console.log("Message sent: %s", info.messageId);
+  } catch (error) {
+    console.log(error);
+  }
+};
 
 //* create user
 export const createUser = async (req, res) => {
@@ -53,6 +107,7 @@ export const createUser = async (req, res) => {
         message: "Please Enter valid age",
       });
     }
+
     const user = await prisma.users.findUnique({
       where: {
         email: email,
@@ -64,21 +119,22 @@ export const createUser = async (req, res) => {
         message: "Email Already Taken,Please Anther Email.",
       });
     }
-    const salt = await bcrypt.genSalt(10);
-    const securePassword = await bcrypt.hash(password, salt);
-    const newUser = await prisma.users.create({
-      data: {
-        first_name,
-        last_name,
-        email,
-        password: securePassword, //securePass is object
-        mobile_no,
-        gender,
-        age,
-        date_of_birth: new Date(date_of_birth),
-        created_at: getTimeStamp(new Date()),
-      },
-    });
+    await sendMessageOnMail(first_name, email);
+    // const salt = await bcrypt.genSalt(10);
+    // const securePassword = await bcrypt.hash(password, salt);
+    // const newUser = await prisma.users.create({
+    //   data: {
+    //     first_name,
+    //     last_name,
+    //     email,
+    //     password: securePassword, //securePass is object
+    //     mobile_no,
+    //     gender,
+    //     age,
+    //     date_of_birth: new Date(date_of_birth),
+    //     created_at: getTimeStamp(new Date()),
+    //   },
+    //});
     res.json({ status: "success", message: "user create successfully" });
   } catch (error) {
     console.log(error);
@@ -113,11 +169,10 @@ export const userLogin = async (req, res) => {
     },
   };
 
-  const token = Jwt.sign(payload, config.secretKey, { expiresIn: "10m" });
+  const token = Jwt.sign(payload, secretKey, { expiresIn: "30m" });
   res.json({ token });
   //return res.json({status:200,message:"user Login Successfully"});
 };
-
 
 //* get data on authored user
 export const getAuthUserDetails = async (req, res) => {
@@ -147,20 +202,20 @@ export const getAuthUserDetails = async (req, res) => {
   }
 };
 
-export const updatePassword =async (req,res) => {
+export const updatePassword = async (req, res) => {
   try {
     const userId = req.user.id;
-    const {password}=req.body;
-    if (password != ""){
+    const { password } = req.body;
+    if (password != "") {
       const user = await prisma.users.findFirst({
         where: {
           user_id: userId,
         },
       });
-      const passwordMatch = await bcrypt.compare( password,user.password);
-      if(!passwordMatch){
+      const passwordMatch = await bcrypt.compare(password, user.password);
+      if (!passwordMatch) {
         const salt = await bcrypt.genSalt(10);
-        const securePassword = await bcrypt.hash(password, salt);  
+        const securePassword = await bcrypt.hash(password, salt);
         await prisma.users.update({
           where: {
             user_id: userId,
@@ -173,38 +228,56 @@ export const updatePassword =async (req,res) => {
           status: "success",
           message: "user password updated successfully",
         });
-      }else{
-      res.json({status:"failed", message: "Enter unique password"});
+      } else {
+        res.json({ status: "failed", message: "Enter unique password" });
       }
-    }else{
-    res.json({ status: "failed", message: "Enter password" });
+    } else {
+      res.json({ status: "failed", message: "Enter password" });
     }
   } catch (error) {
     console.log(error);
   }
 };
 
-export const updateUserDetails=async(req,res)=>{
-const userId = req.user.id;
-const {first_name,last_name,email,mobile_no,gender,age,date_of_birth}=req.body;
-if(first_name =='' || last_name =='' || email=='' || mobile_no=='' || gender==''|| age=='' || date_of_birth==''){
-  res.json({status:"failed",message:"Enter updated fields"});
-}else{
-  await prisma.users.update({
-    where: {
-      user_id: userId,
-    },
-    data: {
-      first_name,
-      last_name,
-      email,
-      mobile_no,
-      gender,
-      age,
-      date_of_birth: new Date(date_of_birth)
-    },
-  });
-  res.json({satus:"success",message:"user details updated successfully"});
-}
-}
- 
+export const updateUserDetails = async (req, res) => {
+  const userId = req.user.id;
+  const {
+    first_name,
+    last_name,
+    email,
+    mobile_no,
+    gender,
+    age,
+    date_of_birth,
+  } = req.body;
+  if (
+    first_name == "" ||
+    last_name == "" ||
+    email == "" ||
+    mobile_no == "" ||
+    gender == "" ||
+    age == "" ||
+    date_of_birth == ""
+  ) {
+    res.json({ status: "failed", message: "Enter updated fields" });
+  } else {
+    await prisma.users.update({
+      where: {
+        user_id: userId,
+      },
+      data: {
+        first_name,
+        last_name,
+        email,
+        mobile_no,
+        gender,
+        age,
+        date_of_birth: new Date(date_of_birth),
+      },
+    });
+    res.json({
+      status: "success",
+      message: "user details updated successfully",
+    });
+  }
+};
